@@ -1,1 +1,3 @@
-# GU_data_mining
+# data_mining (Geek University)
+
+Repository with data mining tasks
