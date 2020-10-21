@@ -3,6 +3,24 @@ from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from urllib.parse import urlparse
 import time
+from datetime import datetime
+
+
+# russian month translator for datetime
+month = {
+    'января': 1,
+    'февраля': 2,
+    'марта': 3,
+    'апреля': 4,
+    'мая': 5,
+    'июня': 6,
+    'июля': 7,
+    'августа': 8,
+    'сентября': 9,
+    'октября': 10,
+    'ноября': 11,
+    'декабря': 12,
+}
 
 
 class MagnitParser:
@@ -57,18 +75,23 @@ class MagnitParser:
                 # на странице несколько одинаковых классов new/old, поэтому подключаем findChild
                 if key.count('price'):
                     prod = product_soup.findChild('div', attrs={'class': 'action__footer'})
-                    product[key] = '.'.join(getattr(prod.find(value[0], attrs={'class': value[1]}), value[2]).split())
+                    prod = '.'.join(getattr(prod.find(value[0], attrs={'class': value[1]}), value[2]).split())
+                    product[key] = float(prod)
                 # image-url собираем из нескольких кусочков
                 elif key == 'image_url':
                     prod = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2])('data-src')
                     product[key] = f'{urlparse(url).scheme}://{urlparse(url).hostname}{prod}'
                 # есть 2 формата дат: "c DD month по DD month" и "только DD month"
                 elif key == 'date_from':
-                    prod = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2])
-                    product[key] = ' '.join(prod.split(' ')[1:3])
+                    prod = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2]).split(' ')
+                    product[key] = datetime.strptime(f'{prod[1]} '
+                                                     f'{month[prod[2]]} '
+                                                     f'{datetime.now().year}', "%d %m %Y")
                 elif key == 'date_to':
-                    prod = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2])
-                    product[key] = ' '.join(prod.split(' ')[-2:])
+                    prod = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2]).split(' ')
+                    product[key] = datetime.strptime(f'{prod[-2]} '
+                                                     f'{month[prod[-1]]} '
+                                                     f'{datetime.now().year}', "%d %m %Y")
                 else:
                     product[key] = getattr(product_soup.find(value[0], attrs={'class': value[1]}), value[2])
             except Exception:
