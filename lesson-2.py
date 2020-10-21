@@ -79,8 +79,28 @@ class MagnitParser:
         collection = self.db['magnit']
         collection.insert_one(product_data)
 
+    def get_from_mongodb(self, database: str, elements: dict, multiple=False) -> list:
+        """
+        Method gets grouped by element documents from mongoDB
+        :param database: str
+        :param elements: dict
+        :param multiple: one doc or multiple
+        :return: list
+        """
+        collection = self.db[database]
+        if multiple:
+            products = collection.find(elements)
+            docs = [_ for _ in products]
+            print(f'{len(docs)} документов получено из DB "{database}" с параметрами {elements}')
+            return docs
+        else:
+            print(f'Один документ получен из DB "{database}" с параметрами {elements}')
+            return collection.find_one(elements)
+
 
 if __name__ == '__main__':
     url = 'https://magnit.ru/promo/'
     parser = MagnitParser(url)
     parser.parse()
+
+    products_mongodb = parser.get_from_mongodb('magnit', {'promo_name': '1+1'}, multiple=True)
