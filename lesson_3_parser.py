@@ -45,9 +45,7 @@ class GeekBrainsParser:
                 blog_url = f'{self._url.scheme}://{self._url.hostname}{blog.attrs.get("href")}'
                 blog_soup = self._get_soup(blog_url)
                 blog_data = self.get_blog_structure(blog_soup, blog_url)
-                # print(1)
-                # self.save_to(blog_data)  # Is not ready! In process...
-            # print(1)
+                self.save_to(blog_data)
             page += 1
 
     def comment_parse(self, comments_id: str) -> list:
@@ -111,12 +109,10 @@ class GeekBrainsParser:
                 blog[key] = value(blog_soup)
             except Exception:
                 blog[key] = None
-        # print(1)
         return blog
 
     @staticmethod
     def save_to(blog_data: dict):
-        # Is not ready! In process...
         """
         Method-saver
         """
@@ -128,21 +124,23 @@ class GeekBrainsParser:
             writer = db_writer_check
         db.add(writer)
 
-        # In process of error solving: TypeError('Incompatible collection type: Post is not list-like')
         post = models.Post(header=blog_data['header'], post_date=blog_data['post_date'],
                            url=blog_data['url'], img_url=blog_data['img_url'], writer=writer)
         db.add(post)
 
-        tag = models.Tag(name=blog_data['tags'][0], url=blog_data['tags'][1], posts=post)  # add connection with post
-        db.add(tag)
-        post.tag.append(tag)
+        for element in blog_data['tags']:
+            tag = models.Tag(name=element[0], url=element[1], posts=[post])
+            db_tag_check = db.query(models.Tag).filter(models.Tag.url == tag.url).first()
+            if db_tag_check:
+                tag = db_tag_check
+            db.add(tag)
+            post.tag.append(tag)
 
-        target = blog_data['comments']
-        while target:
-            comment = models.Comment(text=target[2], writer=target[1])
+        target_comment = blog_data['comments']
+        while target_comment:
+            comment = models.Comment(text=target_comment[2], writer=target_comment[1], posts=[post])
             db.add(comment)
-            target = target[3]
-        print(1)
+            target_comment = target_comment[3]
         db.commit()
         db.close()
 
