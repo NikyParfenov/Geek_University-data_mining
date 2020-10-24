@@ -54,7 +54,6 @@ class Comment(Base):
     __tablename__ = 'comment'
     id = Column(Integer, autoincrement=True, primary_key=True)
     text = Column(String, unique=False, nullable=False)
-    comment_id = Column(Integer, unique=False, nullable=True)
     writer_id = Column(Integer, ForeignKey('writer.id'))
     post_id = Column(Integer, ForeignKey('post.id'))
     posts = relationship('Post', back_populates='comments')

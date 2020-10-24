@@ -23,21 +23,22 @@ class GeekBrainsParser:
         response = requests.get(url, params=params, headers=self._headers)
         return BeautifulSoup(response.text, 'lxml')
 
-    def parse(self):
+    def parse(self, start_page=1):
         """
         Main parser method
         """
-        page = 1
-        blog_pages = 1
+        page = start_page
+        blog_pages = start_page
         while page <= blog_pages:
             params = {
                 'page': page,
             }
             soup = self._get_soup(self.start_url, params)
-            pagination = soup.find('ul', attrs={'class': 'gb__pagination'}).findChildren('a')
-            blog_pages = int(pagination[len(pagination)-2].text)  # estimate pages number
-            blogs = soup.find('div', attrs={'class': 'post-items-wrapper'}).findChildren('a')
-
+            # estimate pages number
+            blog_pages = int(soup.find('ul', attrs={'class': 'gb__pagination'}).findChildren('a')[-2].text)
+            blogs = soup.find('div', attrs={'class': 'post-items-wrapper'}). \
+                findChildren('a', attrs={'class': 'post-item__title'})
+            print(f'Parsing the page {page} of {blog_pages}...', end=' ')
             for blog in blogs:
                 if blog.attrs.get('href')[0] != '/':
                     continue
@@ -46,6 +47,7 @@ class GeekBrainsParser:
                 blog_soup = self._get_soup(blog_url)
                 blog_data = self.get_blog_structure(blog_soup, blog_url)
                 self.save_to(blog_data)
+            print('done!')
             page += 1
 
     def comment_parse(self, comments_id: str) -> list:
@@ -136,11 +138,19 @@ class GeekBrainsParser:
             db.add(tag)
             post.tag.append(tag)
 
-        target_comment = blog_data['comments']
-        while target_comment:
-            comment = models.Comment(text=target_comment[2], writer=target_comment[1], posts=[post])
-            db.add(comment)
-            target_comment = target_comment[3]
+        def save_comments_to_db(target_comment):
+            """
+            Recursive comments saving
+            """
+            for item in target_comment:
+                comment = models.Comment(text=item[2], posts=post,
+                                         writer=db.query(models.Writer).
+                                         filter(models.Writer.url == item[1]).first())
+                db.add(comment)
+                save_comments_to_db(item[3])
+
+        save_comments_to_db(blog_data['comments'])
+
         db.commit()
         db.close()
 
@@ -149,5 +159,3 @@ if __name__ == '__main__':
     url = 'https://geekbrains.ru/posts'
     parser = GeekBrainsParser(url)
     parser.parse()
-
-
