@@ -7,7 +7,8 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'youlaparse'
+# BOT_NAME = 'youlaparse'
+BOT_NAME = 'hhparse'
 LOG_ENABLE = True
 LOG_LEVEL = 'DEBUG'
 
@@ -66,9 +67,10 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'youlaparse.pipelines.YoulaparsePipeline': 300,
-#}
+ITEM_PIPELINES = {
+   # 'youlaparse.pipelines.YoulaparsePipeline': 300,
+   'youlaparse.pipelines.HeadHunterPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

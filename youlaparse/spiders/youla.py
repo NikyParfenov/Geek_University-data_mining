@@ -1,8 +1,5 @@
 import scrapy
-import re
-import base64
-from pymongo import MongoClient
-from urllib.parse import unquote
+from ..loaders import YoulaAutoLoader, HeadHunterRemoteJobsLoader, HeadHunterJobsCompanyLoader
 
 
 class YoulaSpider(scrapy.Spider):
@@ -15,7 +12,6 @@ class YoulaSpider(scrapy.Spider):
         'ads': '//div[@id="serp"]//article//a[@data-target="serp-snippet-title"]/@href',
         'pagination': '//div[contains(@class, "Paginator_block")]/a/@href',
     }
-    db_client = MongoClient('mongodb://localhost:27017')
 
     # parsing start urls
     def parse(self, response, **kwargs):
@@ -30,42 +26,66 @@ class YoulaSpider(scrapy.Spider):
         for url in response.xpath(self.xpath['ads']):
             yield response.follow(url, callback=self.ads_parse)
 
-    # javascript decoder
-    def js_decoder(self, response, **kwargs):
-        find_script = response.xpath('//script[contains(text(), "window.transitState =")]/text()').get()
-        find_owner_id = re.compile(r"youlaId%22%2C%22([0-9a-zA-Z]+)%22%2C%22avatar")
-        find_dealer_id = re.compile("page%22%2C%22(https%3A%2F%2Fam.ru%2Fcardealers%2F[0-9a-zA-Z\S]+%2F%23info)"
-                                    "%22%2C%22salePointLogo")
-        person = re.findall(find_owner_id, find_script)
-        dealer = re.findall(find_dealer_id, find_script)
-        owner = f'https://youla.ru/user/{person[0]}' if person else unquote(dealer[0])
-
-        find_owner_phone = re.compile(r"phone%22%2C%22([0-9a-zA-Z]{33}w%3D%3D)%22%2C%22time")
-        phone_num_encoded = re.findall(find_owner_phone, find_script)
-        phone_num_decoded_1stage = base64.b64decode(unquote(phone_num_encoded[0]).encode('utf-8'))
-        phone_num_decoded_2stage = base64.b64decode(phone_num_decoded_1stage)
-        phone_num = phone_num_decoded_2stage.decode('utf-8')
-
-        return owner, phone_num
-
     # parsing advertisements
     def ads_parse(self, response, **kwargs):
-        name = response.xpath('//div[contains(@class, "AdvertCard_advertTitle")]/text()').extract_first()
-        images = response.xpath('//div[contains(@class, "PhotoGallery_block")]//img/@src').extract()
+        loader = YoulaAutoLoader(response=response)
+        loader.add_xpath('title', '//div[contains(@class, "AdvertCard_advertTitle")]/text()')
+        loader.add_xpath('img', '//div[contains(@class, "PhotoGallery_block")]//img/@src')
+        loader.add_xpath('owner', '//script[contains(text(), "window.transitState =")]/text()')
+        loader.add_xpath('phone_num', '//script[contains(text(), "window.transitState =")]/text()')
+        loader.add_value('url', response.url)
+        loader.add_value('tech_data', '//div[contains(@class, "AdvertCard_specs")]'
+                                      '//div[contains(@class, "AdvertSpecs")]')
+        loader.add_xpath('description', '//div[contains(@class, "AdvertCard_descriptionInner")]/text()')
+        yield loader.load_item()
 
-        tech_key = response.xpath('//div[contains(@class, "AdvertSpecs_label")]/text()').extract()
-        tech_value = response.xpath('//div[contains(@class, "AdvertSpecs_data")]//text()').extract()
-        tech_data = dict(zip(tech_key, tech_value))
 
-        description = response.xpath('//div[contains(@class, "AdvertCard_descriptionInner")]/text()').extract_first()
+class HeadHunterSpider(scrapy.Spider):
+    name = 'hh'
+    allowed_domains = ['spb.hh.ru']
+    start_urls = ['https://spb.hh.ru/search/vacancy?schedule=remote&L_profession_id=0&area=113']
 
-        owner, phone_num = self.js_decoder(response)
+    xpath = {
+        'vacancies': '//div[@class="vacancy-serp"]//a[contains(@class, "HH-LinkModifier")]/@href',
+        'pagination': '//div[contains(@class, "bloko-gap")]//a[contains(@class, "HH-Pager-Controls-Next")]/@href',
+        'company': '//div[@class="vacancy-company-name-wrapper"]/a/@href',
+        'company_vacancies': '//div[@class="employer-sidebar-content"]/div[@class="employer-sidebar-block"]/a/@href',
+    }
 
-        collection = self.db_client['db_parse_10-2020'][self.name]
-        collection.insert_one({'title': name,
-                               'img': images,
-                               'tech_data': tech_data,
-                               'description': description,
-                               'owner': owner,
-                               'phone_num': phone_num,
-                               })
+    # parsing basic page with remote vacancies
+    def parse(self, response, **kwargs):
+        # follow to a next page
+        for url in response.xpath(self.xpath['pagination']):
+            yield response.follow(url, callback=self.parse)
+        # follow to a vacancy page
+        for url in response.xpath(self.xpath['vacancies']):
+            yield response.follow(url, callback=self.vacancy_parse)
+
+    # parsing vacancies
+    def vacancy_parse(self, response, **kwargs):
+        loader = HeadHunterRemoteJobsLoader(response=response)
+        loader.add_value('url', response.url)
+        loader.add_xpath('title', '//div[@class="vacancy-title"]//h1/text()')
+        loader.add_xpath('salary', '//div[@class="vacancy-title"]//p[@class="vacancy-salary"]//text()')
+        loader.add_xpath('description', '//div[@class="vacancy-section"]/div[@class="g-user-content"]//text()')
+        loader.add_xpath('skills', '//div[@class="bloko-tag-list"]/div//span/text()')
+        loader.add_xpath('owner_url', self.xpath['company'])
+        yield loader.load_item()
+
+        # follow to a vacancy of a company
+        for url in response.xpath(self.xpath['company']):
+            yield response.follow(url, callback=self.company_parse)
+
+    # parse a company page
+    def company_parse(self, response, **kwargs):
+        loader = HeadHunterJobsCompanyLoader(response=response)
+        loader.add_value('url', response.url)
+        loader.add_xpath('title', '//div[@class="employer-sidebar-header"]//span//text()')
+        loader.add_xpath('company_url', '//div[@class="employer-sidebar-content"]/a/@href')
+        loader.add_xpath('field_of_work', '//div[@class="employer-sidebar-block"]/p/text()')
+        loader.add_xpath('description', '//div[@class="company-description"]/div[@class="g-user-content"]//text()')
+        yield loader.load_item()
+
+        # follow to an company's vacancies
+        for url in response.xpath(self.xpath['company_vacancies']):
+            yield response.follow(url, callback=self.parse)
