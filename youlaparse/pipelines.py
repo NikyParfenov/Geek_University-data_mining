@@ -26,6 +26,6 @@ class HeadHunterPipeline:
         self.db = db_client['db_parse_10-2020']
 
     def process_item(self, item, spider):
-        collection = self.db[spider.name]
+        collection = self.db[type(item).__name__]
         collection.insert_one(item)
         return item
