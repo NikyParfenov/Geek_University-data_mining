@@ -1,4 +1,4 @@
-# Scrapy settings for youlaparse project
+# Scrapy settings for gbparsers project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,13 +7,12 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-# BOT_NAME = 'youlaparse'
-BOT_NAME = 'hhparse'
+BOT_NAME = 'gbparsers'
 LOG_ENABLE = True
 LOG_LEVEL = 'DEBUG'
 
-SPIDER_MODULES = ['youlaparse.spiders']
-NEWSPIDER_MODULE = 'youlaparse.spiders'
+SPIDER_MODULES = ['gbparsers.spiders']
+NEWSPIDER_MODULE = 'gbparsers.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -50,13 +49,13 @@ DEFAULT_REQUEST_HEADERS = {
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'youlaparse.middlewares.YoulaparseSpiderMiddleware': 543,
+#    'gbparsers.middlewares.YoulaparseSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    'youlaparse.middlewares.YoulaparseDownloaderMiddleware': 543,
+#    'gbparsers.middlewares.YoulaparseDownloaderMiddleware': 543,
 #}
 
 # Enable or disable extensions
@@ -68,8 +67,8 @@ DEFAULT_REQUEST_HEADERS = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   # 'youlaparse.pipelines.YoulaparsePipeline': 300,
-   'youlaparse.pipelines.HeadHunterPipeline': 300,
+   'gbparsers.pipelines.YoulaparsePipeline': 300,
+   'gbparsers.pipelines.HeadHunterPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

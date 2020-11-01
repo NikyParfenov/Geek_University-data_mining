@@ -6,12 +6,6 @@
 import scrapy
 
 
-class YoulaparseItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
-
-
 class YoulaAutoItem(scrapy.Item):
     _id = scrapy.Field()
     title = scrapy.Field()
@@ -23,7 +17,7 @@ class YoulaAutoItem(scrapy.Item):
     phone_num = scrapy.Field()
 
 
-class HeadHunterRemoteJobsItem(scrapy.Item):
+class HeadHunterJobsItem(scrapy.Item):
     _id = scrapy.Field()
     url = scrapy.Field()
     title = scrapy.Field()
@@ -33,7 +27,7 @@ class HeadHunterRemoteJobsItem(scrapy.Item):
     owner_url = scrapy.Field()
 
 
-class HeadHunterJobsCompanyItem(scrapy.Item):
+class HeadHunterCompaniesItem(scrapy.Item):
     _id = scrapy.Field()
     url = scrapy.Field()
     title = scrapy.Field()

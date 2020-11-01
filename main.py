@@ -1,7 +1,8 @@
 from scrapy.crawler import CrawlerProcess
 from scrapy.settings import Settings
-from youlaparse import settings
-from youlaparse.spiders.youla import YoulaSpider, HeadHunterSpider
+from gbparsers import settings
+from gbparsers.spiders.youla import YoulaSpider
+from gbparsers.spiders.hh import HeadHunterSpider
 
 if __name__ == '__main__':
     crawl_settings = Settings()

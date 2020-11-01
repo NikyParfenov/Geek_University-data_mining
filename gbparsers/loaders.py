@@ -4,7 +4,7 @@ from urllib.parse import unquote
 from itemloaders.processors import TakeFirst, MapCompose
 from scrapy.loader import ItemLoader
 from scrapy import Selector
-from .items import YoulaAutoItem, HeadHunterRemoteJobsItem, HeadHunterJobsCompanyItem
+from .items import YoulaAutoItem, HeadHunterJobsItem, HeadHunterCompaniesItem
 
 
 def search_owner_id(itm):
@@ -65,8 +65,8 @@ def create_owner_url(itm):
     return result
 
 
-class HeadHunterRemoteJobsLoader(ItemLoader):
-    default_item_class = HeadHunterRemoteJobsItem
+class HeadHunterJobsLoader(ItemLoader):
+    default_item_class = HeadHunterJobsItem
 
     url_out = TakeFirst()
     title_out = TakeFirst()
@@ -79,8 +79,8 @@ class HeadHunterRemoteJobsLoader(ItemLoader):
     owner_url_out = TakeFirst()
 
 
-class HeadHunterJobsCompanyLoader(ItemLoader):
-    default_item_class = HeadHunterJobsCompanyItem
+class HeadHunterCompaniesLoader(ItemLoader):
+    default_item_class = HeadHunterCompaniesItem
 
     url_out = TakeFirst()
     title_in = list_to_string_concat
