@@ -32,7 +32,10 @@ def get_tech_data(itm):
 
 
 def tech_data_out(itms):
-    tech_data = {itm for itm in itms if None not in itm}
+    tech_data = {}
+    for itm in itms:
+        if None not in itm:
+            tech_data.update(itm)
     return tech_data
 
 
