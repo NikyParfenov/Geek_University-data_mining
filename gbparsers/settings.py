@@ -67,7 +67,7 @@ DEFAULT_REQUEST_HEADERS = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'gbparsers.pipelines.YoulaparsePipeline': 300,
+   # 'gbparsers.pipelines.YoulaparsePipeline': 300,
    'gbparsers.pipelines.HeadHunterPipeline': 300,
 }
 
