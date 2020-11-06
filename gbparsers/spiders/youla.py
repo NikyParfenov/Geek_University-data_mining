@@ -34,7 +34,7 @@ class YoulaSpider(scrapy.Spider):
         loader.add_xpath('owner', '//script[contains(text(), "window.transitState =")]/text()')
         loader.add_xpath('phone_num', '//script[contains(text(), "window.transitState =")]/text()')
         loader.add_value('url', response.url)
-        loader.add_value('tech_data', '//div[contains(@class, "AdvertCard_specs")]'
+        loader.add_xpath('tech_data', '//div[contains(@class, "AdvertCard_specs")]'
                                       '//div[contains(@class, "AdvertSpecs")]')
         loader.add_xpath('description', '//div[contains(@class, "AdvertCard_descriptionInner")]/text()')
         yield loader.load_item()

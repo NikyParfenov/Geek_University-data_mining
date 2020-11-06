@@ -2,14 +2,15 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-
+import time
 from scrapy import signals
-
+from scrapy.downloadermiddlewares.retry import RetryMiddleware
+from scrapy.utils.response import response_status_message
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
 
-class YoulaparseSpiderMiddleware:
+class GbparsersSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
     # passed objects.
@@ -56,7 +57,7 @@ class YoulaparseSpiderMiddleware:
         spider.logger.info('Spider opened: %s' % spider.name)
 
 
-class YoulaparseDownloaderMiddleware:
+class GbparsersDownloaderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the downloader middleware does not modify the
     # passed objects.
@@ -101,3 +102,22 @@ class YoulaparseDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+class Retry429Middleware(RetryMiddleware):
+    def __init__(self, crawler):
+        super().__init__(crawler.settings)
+        self.crawler = crawler
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(crawler)
+
+    def process_response(self, request, response, spider):
+        if response.status == 429:
+            self.crawler.engine.pause()
+            time.sleep(300)
+            self.crawler.engine.unpause()
+            reason = response_status_message(response.status)
+            return self._retry(request, reason, spider)
+        return response
