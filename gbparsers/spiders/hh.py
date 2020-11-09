@@ -1,3 +1,18 @@
+"""
+Parser of hh.ru using the next structure:
+1. Remote jobs
+1.1. Title of vacancy
+1.2. Salary
+1.3. Vacancy description
+1.4. Key skills
+1.5. Author of a vacancy (url)
+2. Authors of parsed remote vacancies:
+2.1. Company name
+2.2. Web-site (url)
+2.3. Field of company work
+2.4. Company description
+3. In addition, parse all vacancies of that authors using structure in 1.
+"""
 import scrapy
 from ..loaders import HeadHunterJobsLoader, HeadHunterCompaniesLoader
 

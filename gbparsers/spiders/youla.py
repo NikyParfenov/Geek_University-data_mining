@@ -1,3 +1,12 @@
+"""
+Parser of auto in Youla.ru using the next structure:
+1. Advertisement title
+2. List of photos url
+3. List of technical data
+4. Description
+5. Author of an advertisement (url)
+6. Phone number of an author
+"""
 import scrapy
 from ..loaders import YoulaAutoLoader
 

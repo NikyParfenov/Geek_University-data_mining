@@ -26,11 +26,12 @@ class GbparsersPipeline:
 class GbparsersImagePipeline(ImagesPipeline):
 
     def get_media_requests(self, item, info):
-        for url in item.get('img'):
-            try:
-                yield Request(url)
-            except Exception as e:
-                print(e)
+        if item.get('img'):
+            for url in item.get('img'):
+                try:
+                    yield Request(url)
+                except Exception as e:
+                    print(e)
 
     def item_completed(self, results, item, info):
         if item.get('img'):
