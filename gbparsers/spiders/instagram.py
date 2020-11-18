@@ -28,7 +28,7 @@ class InstagramSpider(scrapy.Spider):
         # tags for parsing
         self.tags = ['python', 'pythonprogramming']
         # part of users url for parsing of followings and followers
-        self.users = ['ks_parfenova15', '_dinara_safronova']
+        self.users = ['ks_parfenova15', 'vikagonchar_']
         self.finder = 0
         # self.users_follow = users
         self.__login = login
