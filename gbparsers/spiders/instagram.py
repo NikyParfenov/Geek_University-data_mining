@@ -2,11 +2,11 @@
 Instagram parser of the next data blocks:
 1. Parse of hashtags with associated posts (parse date, data, photos url with saving its on a disk)
 2. Parse of users followings and followers
-3. Handshake chain
 """
 import scrapy
 import json
 from datetime import datetime
+from pymongo import MongoClient
 from ..items import InstagramTagsItem, InstagramPostsItem, InstagramUserFollowItems
 
 
@@ -24,11 +24,13 @@ class InstagramSpider(scrapy.Spider):
                   'followings': 'd04b0a864b4b54837c0d870b0e77e076',
                   }
 
-    def __init__(self, users, login, enc_password, *args, **kwargs):
+    def __init__(self, login, enc_password, *args, **kwargs):
         # tags for parsing
         self.tags = ['python', 'pythonprogramming']
         # part of users url for parsing of followings and followers
-        self.users_follow = users
+        self.users = ['ks_parfenova15', '_dinara_safronova']
+        self.finder = 0
+        # self.users_follow = users
         self.__login = login
         self.__enc_password = enc_password
         super().__init__(*args, **kwargs)
@@ -50,10 +52,10 @@ class InstagramSpider(scrapy.Spider):
             if response.json().get('authenticated'):
                 # for tag in self.tags:
                 #     yield response.follow(f'/explore/tags/{tag}/', callback=self.tag_parse, cb_kwargs={'param': tag})
-                for user in self.users_follow:
-                    yield response.follow(f'/{user}/',
-                                          callback=self.users_follow_parse,
-                                          )
+                # for user in self.users:
+                yield response.follow(f'/{self.users[0]}/',
+                                      callback=self.user_parse,
+                                      )
 
     def tag_parse(self, response, **kwargs):
         # parse of input tags into Item structure
@@ -94,31 +96,32 @@ class InstagramSpider(scrapy.Spider):
         script = response.xpath('//script[contains(text(), "window._sharedData =")]/text()').get()
         return json.loads(script.replace('window._sharedData =', '')[:-1])
 
-    def users_follow_parse(self, response, user_page=None, query_variables=None):
-        if user_page is None:
-            user_page = self.js_data_extract(response)['entry_data']['ProfilePage'][0]['graphql']['user']
-        if query_variables is None:
-            query_variables = {"id": user_page['id'],
-                               "first": 100,
-                               }
-        for follow_type in self.follow_types.keys():
-            url = f'{self.pagination_url}?query_hash={self.query_hash[follow_type]}' \
-                  f'&variables={json.dumps(query_variables)}'
-            yield response.follow(url, callback=self.followings_parse, cb_kwargs={'user_page': user_page,
-                                                                                  'follow_type': follow_type,
-                                                                                  })
+    def user_parse(self, response):
+        user_page = self.js_data_extract(response)['entry_data']['ProfilePage'][0]['graphql']['user']
+        query_variables = {"id": user_page['id'],
+                           "first": 100,
+                           }
+        yield from self.users_follow_parse(response, user_page, query_variables, follow_type='followings')
+        yield from self.users_follow_parse(response, user_page, query_variables, follow_type='followers')
 
-    def followings_parse(self, response, user_page, follow_type):
+    def users_follow_parse(self, response, user_page, query_variables, follow_type):
+        url = f'{self.pagination_url}?query_hash={self.query_hash[follow_type]}' \
+              f'&variables={json.dumps(query_variables)}'
+        yield response.follow(url, callback=self.followings_pagination_parse, cb_kwargs={'user_page': user_page,
+                                                                                         'follow_type': follow_type,
+                                                                                         })
+
+    def followings_pagination_parse(self, response, user_page, follow_type):
         js_data = response.json()['data']['user'][self.follow_types[follow_type]]
-        yield from self.follow_item(user_page, js_data['edges'], follow_type)
+        yield from self.follow_item(user_page, js_data['edges'], follow_type, response)
         if js_data['page_info']['has_next_page']:
             query_variables = {"id": user_page['id'],
                                "first": 100,
                                "after": js_data['page_info']['end_cursor'],
                                }
-            yield from self.users_follow_parse(response, user_page, query_variables)
+            yield from self.users_follow_parse(response, user_page, query_variables, follow_type)
 
-    def follow_item(self, user_page, follow_users, follow_type):
+    def follow_item(self, user_page, follow_users, follow_type, response):
         for user in follow_users:
             if follow_type == 'followings':
                 yield InstagramUserFollowItems(user_id=user_page['id'],
@@ -126,95 +129,16 @@ class InstagramSpider(scrapy.Spider):
                                                follow_id=user['node']['id'],
                                                follow_name=user['node']['username'],
                                                )
-            else:
+            elif follow_type == 'followers':
                 yield InstagramUserFollowItems(user_id=user['node']['id'],
                                                user_name=user['node']['username'],
                                                follow_id=user_page['id'],
                                                follow_name=user_page['username'],
                                                )
-
-
-class InstagramHandshakeSpider(scrapy.Spider):
-    name = 'instagram'
-    allowed_domains = ['www.instagram.com']
-    start_urls = ['https://www.instagram.com/']
-    __login_url = 'https://www.instagram.com/accounts/login/ajax/'
-    pagination_url = '/graphql/query/'
-    follow_types = {'followings': 'edge_follow',
-                    'followers': 'edge_followed_by',
-                    }
-    query_hash = {'followers': 'c76146de99bb02f6415203be841dd25a',
-                  'followings': 'd04b0a864b4b54837c0d870b0e77e076',
-                  }
-
-    def __init__(self, users, login, enc_password, *args, **kwargs):
-        # part of users url for parsing of followings and followers
-        self.users_follow = users
-        self.__login = login
-        self.__enc_password = enc_password
-        super().__init__(*args, **kwargs)
-
-    def parse(self, response, **kwargs):
-        try:
-            js_data = self.js_data_extract(response)
-            yield scrapy.FormRequest(
-                self.__login_url,
-                method='POST',
-                callback=self.parse,
-                formdata={
-                    'username': self.__login,
-                    'enc_password': self.__enc_password,
-                },
-                headers={'X-CSRFToken': js_data['config']['csrf_token']},
-            )
-        except AttributeError as e:
-            if response.json().get('authenticated'):
-                for user in self.users_follow:
-                    yield response.follow(f'/{user}/',
-                                          callback=self.users_follow_parse,
-                                          )
-
-    @staticmethod
-    def js_data_extract(response):
-        # extract data from a java script
-        script = response.xpath('//script[contains(text(), "window._sharedData =")]/text()').get()
-        return json.loads(script.replace('window._sharedData =', '')[:-1])
-
-    def users_follow_parse(self, response, user_page=None, query_variables=None):
-        if user_page is None:
-            user_page = self.js_data_extract(response)['entry_data']['ProfilePage'][0]['graphql']['user']
-        if query_variables is None:
-            query_variables = {"id": user_page['id'],
-                               "first": 100,
-                               }
-        for follow_type in self.follow_types.keys():
-            url = f'{self.pagination_url}?query_hash={self.query_hash[follow_type]}' \
-                  f'&variables={json.dumps(query_variables)}'
-            yield response.follow(url, callback=self.followings_parse, cb_kwargs={'user_page': user_page,
-                                                                                  'follow_type': follow_type,
-                                                                                  })
-
-    def followings_parse(self, response, user_page, follow_type):
-        js_data = response.json()['data']['user'][self.follow_types[follow_type]]
-        yield from self.follow_item(user_page, js_data['edges'], follow_type)
-        if js_data['page_info']['has_next_page']:
-            query_variables = {"id": user_page['id'],
-                               "first": 100,
-                               "after": js_data['page_info']['end_cursor'],
-                               }
-            yield from self.users_follow_parse(response, user_page, query_variables)
-
-    def follow_item(self, user_page, follow_users, follow_type):
-        for user in follow_users:
-            if follow_type == 'followings':
-                yield InstagramUserFollowItems(user_id=user_page['id'],
-                                               user_name=user_page['username'],
-                                               follow_id=user['node']['id'],
-                                               follow_name=user['node']['username'],
-                                               )
-            else:
-                yield InstagramUserFollowItems(user_id=user['node']['id'],
-                                               user_name=user['node']['username'],
-                                               follow_id=user_page['id'],
-                                               follow_name=user_page['username'],
-                                               )
+            # вот тут начинается большая рекурсия, которая сильно тормозит парсинг...
+            while not self.finder:
+                yield response.follow(f"https://www.instagram.com/{user['node']['username']}/",
+                                      callback=self.user_parse,
+                                      )
+                if user['node']['username'] == self.users[1]:
+                    self.finder = 1
