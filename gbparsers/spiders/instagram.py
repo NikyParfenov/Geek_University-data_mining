@@ -2,11 +2,11 @@
 Instagram parser of the next data blocks:
 1. Parse of hashtags with associated posts (parse date, data, photos url with saving its on a disk)
 2. Parse of users followings and followers
+3. Parse up to the target user for handshake
 """
 import scrapy
 import json
 from datetime import datetime
-from pymongo import MongoClient
 from ..items import InstagramTagsItem, InstagramPostsItem, InstagramUserFollowItems
 
 
@@ -28,7 +28,8 @@ class InstagramSpider(scrapy.Spider):
         # tags for parsing
         self.tags = ['python', 'pythonprogramming']
         # part of users url for parsing of followings and followers
-        self.users = ['ks_parfenova15', 'vikagonchar_']
+        self.users = ['ks_parfenova15']
+        self.target = 'vikagonchar_'
         self.finder = 0
         # self.users_follow = users
         self.__login = login
@@ -52,10 +53,10 @@ class InstagramSpider(scrapy.Spider):
             if response.json().get('authenticated'):
                 # for tag in self.tags:
                 #     yield response.follow(f'/explore/tags/{tag}/', callback=self.tag_parse, cb_kwargs={'param': tag})
-                # for user in self.users:
-                yield response.follow(f'/{self.users[0]}/',
-                                      callback=self.user_parse,
-                                      )
+                for user in self.users:
+                    yield response.follow(f'/{user}/',
+                                          callback=self.user_parse,
+                                          )
 
     def tag_parse(self, response, **kwargs):
         # parse of input tags into Item structure
@@ -129,16 +130,17 @@ class InstagramSpider(scrapy.Spider):
                                                follow_id=user['node']['id'],
                                                follow_name=user['node']['username'],
                                                )
+                if user['node']['username'] == self.target:
+                    self.finder = 1
+
             elif follow_type == 'followers':
                 yield InstagramUserFollowItems(user_id=user['node']['id'],
                                                user_name=user['node']['username'],
                                                follow_id=user_page['id'],
                                                follow_name=user_page['username'],
                                                )
-            # вот тут начинается большая рекурсия, которая сильно тормозит парсинг...
-            while not self.finder:
-                yield response.follow(f"https://www.instagram.com/{user['node']['username']}/",
-                                      callback=self.user_parse,
-                                      )
-                if user['node']['username'] == self.users[1]:
-                    self.finder = 1
+                # вот тут начинается большая рекурсия, которая сильно тормозит парсинг...
+                if not self.finder:
+                    yield response.follow(f"https://www.instagram.com/{user['node']['username']}/",
+                                          callback=self.user_parse,
+                                          )
